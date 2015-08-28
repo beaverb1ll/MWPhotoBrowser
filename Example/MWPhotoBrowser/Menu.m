@@ -1209,6 +1209,21 @@
 //    NSLog(@"ACTION!");
 //}
 
+- (NSArray *)actionButtonsForPhotoBrowser:(MWPhotoBrowser *)photoBrowser {
+    NSMutableArray *array = [[NSMutableArray alloc] initWithCapacity:3];
+    UIBarButtonItem *barButton;
+    barButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemTrash target:photoBrowser action:@selector(photoBrowser:actionButtonPressed:forPhotoAtIndex:)];
+    [array addObject:barButton];
+    
+    barButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSearch target:photoBrowser action:@selector(photoBrowser:actionButtonPressed:forPhotoAtIndex:)];
+    [array addObject:barButton];
+    return array;
+}
+
+- (void)photoBrowser:(MWPhotoBrowser *)photoBrowser actionButtonPressed:(UIBarButtonItem *)actionButton forPhotoAtIndex:(NSUInteger)index {
+    NSLog(@"actionButton pressed: %@", actionButton);
+}
+
 - (void)photoBrowser:(MWPhotoBrowser *)photoBrowser didDisplayPhotoAtIndex:(NSUInteger)index {
     NSLog(@"Did start viewing photo at index %lu", (unsigned long)index);
 }

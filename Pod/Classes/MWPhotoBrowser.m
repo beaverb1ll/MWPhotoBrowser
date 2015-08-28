@@ -176,7 +176,15 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
         _nextButton = [[UIBarButtonItem alloc] initWithImage:nextButtonImage style:UIBarButtonItemStylePlain target:self action:@selector(gotoNextPage)];
     }
     if (self.displayActionButton) {
-        _actionButton = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(actionButtonPressed:)];
+        if ([self.delegate respondsToSelector:@selector(actionButtonsForPhotoBrowser:)]) {
+            _actionButtons = [self.delegate actionButtonsForPhotoBrowser:self];
+            for (UIBarButtonItem *barButton in _actionButtons) {
+                [barButton setAction:@selector(actionButtonPressed:)];
+                [barButton setTarget:self];
+            }
+        } else {
+            _actionButtons = @[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(actionButtonPressed:)]];
+        }
     }
     
     // Update
@@ -260,12 +268,14 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
     }
 
     // Right - Action
-    if (_actionButton && !(!hasItems && !self.navigationItem.rightBarButtonItem)) {
-        [items addObject:_actionButton];
+    if (_actionButtons && !(!hasItems && !self.navigationItem.rightBarButtonItem)) {
+
+        [items addObjectsFromArray:_actionButtons];
     } else {
         // We're not showing the toolbar so try and show in top right
-        if (_actionButton)
-            self.navigationItem.rightBarButtonItem = _actionButton;
+        if (_actionButtons) {
+                self.navigationItem.rightBarButtonItems = _actionButtons;
+        }
         [items addObject:fixedSpace];
     }
 
@@ -1104,13 +1114,16 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
     // Disable action button if there is no image or it's a video
     MWPhoto *photo = [self photoAtIndex:_currentPageIndex];
     if ([photo underlyingImage] == nil || ([photo respondsToSelector:@selector(isVideo)] && photo.isVideo)) {
-        _actionButton.enabled = NO;
-        _actionButton.tintColor = [UIColor clearColor]; // Tint to hide button
+        for (UIBarButtonItem *barbutton in _actionButtons) {
+            barbutton.enabled = NO;
+            barbutton.tintColor = [UIColor clearColor]; // Tint to hide button
+        }
     } else {
-        _actionButton.enabled = YES;
-        _actionButton.tintColor = nil;
+        for (UIBarButtonItem *barbutton in _actionButtons) {
+            barbutton.enabled = YES;
+            barbutton.tintColor = nil;
+        }
     }
-	
 }
 
 - (void)jumpToPageAtIndex:(NSUInteger)index animated:(BOOL)animated {
@@ -1305,11 +1318,11 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
     [_gridController adjustOffsetsAsRequired];
     
     // Hide action button on nav bar if it exists
-    if (self.navigationItem.rightBarButtonItem == _actionButton) {
-        _gridPreviousRightNavItem = _actionButton;
+    if (self.navigationItem.rightBarButtonItems == _actionButtons) {
+        _gridPreviousRightNavItems = _actionButtons;
         [self.navigationItem setRightBarButtonItem:nil animated:YES];
     } else {
-        _gridPreviousRightNavItem = nil;
+        _gridPreviousRightNavItems = nil;
     }
     
     // Update
@@ -1337,8 +1350,8 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
     _currentGridContentOffset = _gridController.collectionView.contentOffset;
     
     // Restore action button if it was removed
-    if (_gridPreviousRightNavItem == _actionButton && _actionButton) {
-        [self.navigationItem setRightBarButtonItem:_gridPreviousRightNavItem animated:YES];
+    if (_gridPreviousRightNavItems == _actionButtons && _actionButtons) {
+        [self.navigationItem setRightBarButtonItems:_gridPreviousRightNavItems animated:YES];
     }
     
     // Position prior to hide animation
@@ -1558,10 +1571,10 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
     if ([self numberOfPhotos] > 0 && [photo underlyingImage]) {
         
         // If they have defined a delegate method then just message them
-        if ([self.delegate respondsToSelector:@selector(photoBrowser:actionButtonPressedForPhotoAtIndex:)]) {
+        if ([self.delegate respondsToSelector:@selector(photoBrowser:actionButtonPressed:forPhotoAtIndex:)]) {
             
             // Let delegate handle things
-            [self.delegate photoBrowser:self actionButtonPressedForPhotoAtIndex:_currentPageIndex];
+            [self.delegate photoBrowser:self actionButtonPressed:sender forPhotoAtIndex:_currentPageIndex];
             
         } else {
             
@@ -1590,7 +1603,7 @@ static void * MWVideoPlayerObservation = &MWVideoPlayerObservation;
             }];
             // iOS 8 - Set the Anchor Point for the popover
             if (SYSTEM_VERSION_GREATER_THAN_OR_EQUAL_TO(@"8")) {
-                self.activityViewController.popoverPresentationController.barButtonItem = _actionButton;
+                self.activityViewController.popoverPresentationController.barButtonItem = sender;
             }
             [self presentViewController:self.activityViewController animated:YES completion:nil];
 
